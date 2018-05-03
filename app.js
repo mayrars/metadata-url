@@ -15,19 +15,42 @@ var defaultDatabase = admin.database()
 var ref = defaultDatabase.ref('/')
 app.post('/', urlencodedParser, (req, res) => {
 	var data = req.body.urlpage
-	urlMetadata(data).then(
-		function (metadata) { // success handler
-			savemetadata(metadata)
+	compareurl(data).then(
+		function (dat){
+			urlMetadata(data).then(
+				function (metadata) { // success handler
+					savemetadata(metadata)
+					res.redirect('/')
+				},
+				function (error) { // failure handler
+					res.end(error)
+					res.redirect('/')
+				})
+				res.redirect('/')
 		},
-		function (error) { // failure handler
-			res.end(error)
-		})
+		function(error){
+			console.log("Error")
+			setTimeout(function(){
+				res.redirect('/')
+			},2000)
+		}
+	);
 })
 
 function savemetadata(data) {
     ref.push(data,()=>{
 		console.log('Insertado')
 	})
+}
+
+function compareurl(data){
+	return new Promise ((resolve, reject)=>{
+		ref.orderByChild('url').startAt(data).endAt(data+"\uf8ff").on("value",(datos)=>{
+			if(datos.toJSON()===null)
+				 resolve(true)
+			reject(false)
+		});
+	});
 }
 app.use('/', express.static(__dirname + '/public'))
 
