@@ -3,16 +3,27 @@ const request = require('request')
 var bodyParser = require('body-parser')
 var admin = require("firebase-admin");
 const urlMetadata = require('url-metadata')
+var Twitter = require('twitter');
 const port = process.env.PORT || 3000
 var app = express();
 var urlencodedParser = bodyParser.urlencoded({ extended: false })
 var serviceAccount = require("./metadata-url-firebase-adminsdk-j7sdi-58dc93e595.json");
+var twitterAccount = require("./twitter-keys.json");
+
 admin.initializeApp({
 	credential: admin.credential.cert(serviceAccount),
 	databaseURL: "https://metadata-url.firebaseio.com"
 });
 var defaultDatabase = admin.database()
 var ref = defaultDatabase.ref('/')
+
+var client = new Twitter({
+	consumer_key: twitterAccount.consumer_key,
+	consumer_secret: twitterAccount.consumer_secret,
+	access_token_key: twitterAccount.access_token,
+	access_token_secret: twitterAccount.access_secret
+});
+var params = { screen_name: 'nodejs' };
 app.post('/', urlencodedParser, (req, res) => {
 	var data = req.body.urlpage
 	compareurl(data).then(
@@ -20,13 +31,19 @@ app.post('/', urlencodedParser, (req, res) => {
 			urlMetadata(data).then(
 				function (metadata) { // success handler
 					savemetadata(metadata)
+					client.post('statuses/update', { status: data })
+						.then(function (tweet) {
+							console.log("Tweet Publicado")
+						})
+						.catch(function (error) {
+							console.log(error)
+						})
 					res.redirect('/')
 				},
 				function (error) { // failure handler
 					res.end(error)
 					res.redirect('/')
 				})
-				res.redirect('/')
 		},
 		function(error){
 			console.log("Error")
